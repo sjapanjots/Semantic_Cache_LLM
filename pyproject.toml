@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling>=1.18"]
+build-backend = "hatchling.build"
+
+[project]
+name = "semcache-llm"
+dynamic = ["version"]
+description = "A semantic cache for LLM calls: reuse answers to questions that mean the same thing, and track hit rate and money saved."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.9"
+authors = [{ name = "Japanjot Singh" }]
+keywords = ["llm", "cache", "semantic-cache", "embeddings", "openai", "anthropic", "claude", "cost"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+dependencies = ["numpy>=1.22"]
+
+[project.optional-dependencies]
+local = ["sentence-transformers>=2.2"]
+openai = ["openai>=1.0"]
+dev = ["pytest>=7", "ruff>=0.4"]
+
+[project.urls]
+Homepage = "https://github.com/sjapanjots/Sematic_Cache_LLM"
+Issues = "https://github.com/sjapanjots/Sematic_Cache_LLM/issues"
+
+[project.scripts]
+semcache = "semcache.cli:main"
+
+[tool.hatch.version]
+path = "src/semcache/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/semcache"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
