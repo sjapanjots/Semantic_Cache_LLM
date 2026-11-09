@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "A semantic cache for LLM calls: reuse answers to questions that mean the same thing, and track hit rate and money saved."
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [{ name = "Japanjot Singh" }]
 keywords = ["llm", "cache", "semantic-cache", "embeddings", "openai", "anthropic", "claude", "cost"]
 classifiers = [
@@ -47,7 +47,7 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py39"
+target-version = "py310"
 extend-exclude = ["*.md"]
 
 [tool.ruff.lint]

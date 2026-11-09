@@ -7,6 +7,7 @@ All notable changes to this project are documented here. The format follows
 ## [0.1.0] - 2026-11-09
 
 ### Added
+- Supports Python 3.10 and later.
 - `SemanticCache` with exact-match fast path and cosine-similarity lookup.
 - Embedders: dependency-free `HashingEmbedder`, `SentenceTransformerEmbedder`,
   `OpenAIEmbedder`, and `CallableEmbedder` for anything else.

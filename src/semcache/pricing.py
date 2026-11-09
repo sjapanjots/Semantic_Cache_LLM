@@ -5,7 +5,6 @@ from __future__ import annotations
 import threading
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Union
 
 __all__ = ["ModelPrice", "PriceBook", "DEFAULT_PRICES"]
 
@@ -42,7 +41,7 @@ DEFAULT_PRICES: dict[str, ModelPrice] = {
     "claude-haiku-4-5": ModelPrice(1.00, 5.00),
 }
 
-PriceLike = Union[ModelPrice, tuple, list]
+PriceLike = ModelPrice | tuple | list
 
 
 def _as_price(value: PriceLike) -> ModelPrice:

@@ -7,10 +7,10 @@ import inspect
 import threading
 import time
 from collections import OrderedDict
-from collections.abc import Awaitable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 from .embedders import Embedder, HashingEmbedder, normalize_text
 from .pricing import PriceBook

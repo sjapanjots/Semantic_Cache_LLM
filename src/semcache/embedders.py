@@ -15,8 +15,8 @@ from __future__ import annotations
 import hashlib
 import re
 import unicodedata
-from collections.abc import Sequence
-from typing import Any, Callable, Protocol, runtime_checkable
+from collections.abc import Callable, Sequence
+from typing import Any, Protocol, runtime_checkable
 
 import numpy as np
 
@@ -92,7 +92,9 @@ class HashingEmbedder:
     def _features(self, text: str) -> list[tuple[str, float]]:
         words = [w for w in normalize_text(text).split() if len(w) > 1 and w not in _STOP_WORDS]
         feats: list[tuple[str, float]] = [("w:" + w, self.word_weight) for w in words]
-        feats += [("b:" + a + " " + b, self.word_weight) for a, b in zip(words, words[1:])]
+        feats += [
+            ("b:" + a + " " + b, self.word_weight) for a, b in zip(words, words[1:], strict=False)
+        ]
         n = self.char_ngram
         for w in words:
             padded = f"<{w}>"
