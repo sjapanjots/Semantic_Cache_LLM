@@ -17,6 +17,9 @@ How requests are matched:
   identical. Two people asking the same question inside different conversations
   never share an answer.
 * ``stream=True`` requests are passed through uncached.
+* Incomplete answers are not stored: Anthropic ``stop_reason`` of ``max_tokens``,
+  ``refusal`` or ``pause_turn``, and OpenAI ``finish_reason`` of ``length`` or
+  ``content_filter``.
 
 The wrappers are duck-typed: they only touch ``chat.completions.create`` (OpenAI) or
 ``messages.create`` (Anthropic), so they also work with compatible clients and fakes.
@@ -100,6 +103,15 @@ def _rehydrator(module: str, attr: str) -> Callable[[Any], Any]:
     return rebuild
 
 
+def _anthropic_complete(response: Any) -> bool:
+    return _field(response, "stop_reason") not in {"max_tokens", "refusal", "pause_turn"}
+
+
+def _openai_complete(response: Any) -> bool:
+    choices = _field(response, "choices") or []
+    return not any(_field(c, "finish_reason") in {"length", "content_filter"} for c in choices)
+
+
 class _ChatCacher:
     def __init__(
         self,
@@ -107,11 +119,13 @@ class _ChatCacher:
         namespace: str,
         usage_fields: tuple[str, str],
         rebuild: Callable[[Any], Any],
+        is_complete: Callable[[Any], bool],
     ) -> None:
         self.cache = cache
         self.namespace = namespace
         self.usage_fields = usage_fields
         self.rebuild = rebuild
+        self.is_complete = is_complete
 
     def key(self, kwargs: dict[str, Any]) -> tuple[str, str] | None:
         """Return ``(prompt, namespace)`` or ``None`` if this request should not be cached."""
@@ -138,11 +152,14 @@ class _ChatCacher:
         return (self.rebuild(hit.response) if hit else None), key
 
     def store(self, kwargs: dict[str, Any], key: tuple[str, str], response: Any) -> None:
+        data = _to_jsonable(response)
+        if not self.is_complete(data):
+            return
         usage = _field(response, "usage")
         in_field, out_field = self.usage_fields
         self.cache.set(
             key[0],
-            _to_jsonable(response),
+            data,
             model=kwargs.get("model"),
             namespace=key[1],
             input_tokens=int(_field(usage, in_field, 0) or 0),
@@ -194,6 +211,7 @@ def wrap_openai(client: Any, cache: SemanticCache, *, namespace: str = "openai")
         namespace,
         usage_fields=("prompt_tokens", "completion_tokens"),
         rebuild=_rehydrator("openai.types.chat", "ChatCompletion"),
+        is_complete=_openai_complete,
     )
     completions = client.chat.completions
     wrapped = _Proxy(completions, create=_cached_create(completions.create, cacher))
@@ -207,6 +225,7 @@ def wrap_anthropic(client: Any, cache: SemanticCache, *, namespace: str = "anthr
         namespace,
         usage_fields=("input_tokens", "output_tokens"),
         rebuild=_rehydrator("anthropic.types", "Message"),
+        is_complete=_anthropic_complete,
     )
     messages = client.messages
     wrapped = _Proxy(messages, create=_cached_create(messages.create, cacher))

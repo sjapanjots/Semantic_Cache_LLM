@@ -119,3 +119,38 @@ def test_async_client(cache):
 
     asyncio.run(run())
     assert len(calls) == 1
+
+
+@pytest.mark.parametrize("stop_reason", ["max_tokens", "refusal", "pause_turn"])
+def test_incomplete_anthropic_answers_not_cached(cache, stop_reason):
+    calls = []
+
+    def create(**kwargs):
+        calls.append(kwargs)
+        return FakeResponse(
+            {"stop_reason": stop_reason, "usage": {"input_tokens": 1, "output_tokens": 1}}
+        )
+
+    client = wrap_anthropic(SimpleNamespace(messages=SimpleNamespace(create=create)), cache)
+    for _ in range(2):
+        client.messages.create(model="claude-test", messages=[user("tell me a story")])
+    assert len(calls) == 2
+
+
+def test_truncated_openai_answers_not_cached(cache):
+    calls = []
+
+    def create(**kwargs):
+        calls.append(kwargs)
+        return FakeResponse(
+            {
+                "choices": [{"finish_reason": "length"}],
+                "usage": {"prompt_tokens": 1, "completion_tokens": 1},
+            }
+        )
+
+    raw = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+    client = wrap_openai(raw, cache)
+    for _ in range(2):
+        client.chat.completions.create(model="gpt-test", messages=[user("tell me a story")])
+    assert len(calls) == 2
