@@ -3,7 +3,7 @@ requires = ["hatchling>=1.18"]
 build-backend = "hatchling.build"
 
 [project]
-name = "semcache-llm"
+name = "semcacher"
 dynamic = ["version"]
 description = "A semantic cache for LLM calls: reuse answers to questions that mean the same thing, and track hit rate and money saved."
 readme = "README.md"

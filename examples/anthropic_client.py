@@ -1,6 +1,6 @@
 """Cache Claude calls with a drop-in wrapper.
 
-pip install "semcache-llm[local]" anthropic
+pip install "semcacher[local]" anthropic
 export ANTHROPIC_API_KEY=...
 python examples/anthropic_client.py
 """
