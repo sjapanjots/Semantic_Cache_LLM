@@ -43,7 +43,7 @@ class CacheStats:
     output_tokens_saved: int = 0
     cost_saved: float = 0.0
     cost_spent: float = 0.0
-    started_at: float = field(default_factory=time.time)
+    started_at: float = field(default_factory=lambda: time.time())
     by_model: dict[str, ModelStats] = field(default_factory=dict)
 
     @property

@@ -9,6 +9,7 @@ from .embedders import (
     SentenceTransformerEmbedder,
 )
 from .pricing import DEFAULT_PRICES, ModelPrice, PriceBook
+from .sqlite_store import EmbedderMismatchError, SQLiteStore
 from .stats import CacheStats, ModelStats
 from .store import BaseStore, CacheEntry, InMemoryStore
 
@@ -25,6 +26,8 @@ __all__ = [
     "DEFAULT_PRICES",
     "BaseStore",
     "InMemoryStore",
+    "SQLiteStore",
+    "EmbedderMismatchError",
     "Embedder",
     "HashingEmbedder",
     "SentenceTransformerEmbedder",

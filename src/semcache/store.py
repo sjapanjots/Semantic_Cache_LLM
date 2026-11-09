@@ -30,7 +30,7 @@ class CacheEntry:
     cost: float | None = None  # explicit USD cost of the original call; overrides pricing
     metadata: dict[str, Any] = field(default_factory=dict)
     id: str = field(default_factory=lambda: uuid.uuid4().hex)
-    created_at: float = field(default_factory=time.time)
+    created_at: float = field(default_factory=lambda: time.time())
     last_hit_at: float | None = None
     hits: int = 0
 
@@ -70,7 +70,18 @@ class BaseStore(ABC):
     @abstractmethod
     def __len__(self) -> int: ...
 
-    def close(self) -> None:  # noqa: B027 - optional hook
+    # Optional hooks; in-memory stores ignore them, persistent stores override them.
+
+    def bind_embedder(self, name: str) -> None:  # noqa: B027
+        """Record which embedder produced the stored vectors (and reject a different one)."""
+
+    def load_stats(self) -> dict[str, Any] | None:
+        return None
+
+    def save_stats(self, data: dict[str, Any]) -> None:  # noqa: B027
+        pass
+
+    def close(self) -> None:  # noqa: B027
         """Release resources. No-op by default."""
 
 
