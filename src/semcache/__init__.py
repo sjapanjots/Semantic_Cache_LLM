@@ -12,6 +12,7 @@ from .pricing import DEFAULT_PRICES, ModelPrice, PriceBook
 from .sqlite_store import EmbedderMismatchError, SQLiteStore
 from .stats import CacheStats, ModelStats
 from .store import BaseStore, CacheEntry, InMemoryStore
+from .tuning import CalibrationResult, LabeledPair, calibrate, load_pairs
 
 __version__ = "0.1.0"
 
@@ -34,5 +35,9 @@ __all__ = [
     "SentenceTransformerEmbedder",
     "OpenAIEmbedder",
     "CallableEmbedder",
+    "calibrate",
+    "load_pairs",
+    "LabeledPair",
+    "CalibrationResult",
     "__version__",
 ]
