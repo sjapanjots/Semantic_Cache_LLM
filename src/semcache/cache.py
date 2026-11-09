@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import functools
+import inspect
 import threading
 import time
-from collections.abc import Mapping
+from collections import OrderedDict
+from collections.abc import Awaitable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, TypeVar
 
 from .embedders import Embedder, HashingEmbedder, normalize_text
 from .pricing import PriceBook
@@ -15,7 +18,9 @@ from .sqlite_store import SQLiteStore
 from .stats import CacheStats, StatsTracker
 from .store import BaseStore, CacheEntry, InMemoryStore
 
-__all__ = ["SemanticCache", "CacheHit"]
+__all__ = ["SemanticCache", "CacheHit", "LLMResult"]
+
+F = TypeVar("F", bound=Callable[..., Any])
 
 
 @dataclass(frozen=True)
@@ -27,6 +32,19 @@ class CacheHit:
     entry: CacheEntry
     exact: bool = False
     cost_saved: float = 0.0
+
+
+@dataclass
+class LLMResult:
+    """What an LLM call function can return to :meth:`SemanticCache.get_or_call`.
+
+    Returning a bare value also works; then the call is recorded as costing nothing.
+    """
+
+    response: Any
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cost: float | None = None
 
 
 class SemanticCache:
@@ -85,6 +103,9 @@ class SemanticCache:
         self._stats = StatsTracker(CacheStats.from_dict(saved) if saved else None)
         self._ops_since_flush = 0
         self._lock = threading.RLock()
+        # A miss is usually followed by set() for the same prompt; remember recent vectors
+        # so a paid embedding API is not called twice.
+        self._vectors: OrderedDict[str, Any] = OrderedDict()
 
     # -- helpers -----------------------------------------------------------------------
 
@@ -93,7 +114,17 @@ class SemanticCache:
         return f"{namespace or self.namespace}::{model or '*'}"
 
     def _embed_one(self, text: str):
-        return self.embedder.embed([text])[0]
+        with self._lock:
+            vector = self._vectors.get(text)
+            if vector is not None:
+                self._vectors.move_to_end(text)
+                return vector
+        vector = self.embedder.embed([text])[0]
+        with self._lock:
+            self._vectors[text] = vector
+            if len(self._vectors) > 128:
+                self._vectors.popitem(last=False)
+        return vector
 
     def _expired(self, entry: CacheEntry, now: float) -> bool:
         return self.ttl is not None and now - entry.created_at > self.ttl
@@ -213,6 +244,112 @@ class SemanticCache:
             self._evict()
             self._after_op()
         return entry
+
+    # -- call-through helpers ----------------------------------------------------------
+
+    def _store_result(self, prompt: str, result: Any, **kwargs: Any) -> Any:
+        if isinstance(result, LLMResult):
+            self.set(
+                prompt,
+                result.response,
+                input_tokens=result.input_tokens,
+                output_tokens=result.output_tokens,
+                cost=result.cost,
+                **kwargs,
+            )
+            return result.response
+        self.set(prompt, result, **kwargs)
+        return result
+
+    def get_or_call(
+        self,
+        prompt: str,
+        fn: Callable[[], Any],
+        *,
+        model: str | None = None,
+        namespace: str | None = None,
+        threshold: float | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> Any:
+        """Return the cached answer, or call ``fn()``, cache what it returns and return it.
+
+        ``fn`` may return the response directly or an :class:`LLMResult` with token usage.
+        """
+        hit = self.lookup(prompt, model=model, namespace=namespace, threshold=threshold)
+        if hit is not None:
+            return hit.response
+        return self._store_result(prompt, fn(), model=model, namespace=namespace, metadata=metadata)
+
+    async def aget_or_call(
+        self,
+        prompt: str,
+        fn: Callable[[], Awaitable[Any]],
+        *,
+        model: str | None = None,
+        namespace: str | None = None,
+        threshold: float | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> Any:
+        """Async version of :meth:`get_or_call`; ``fn`` is awaited on a miss."""
+        hit = self.lookup(prompt, model=model, namespace=namespace, threshold=threshold)
+        if hit is not None:
+            return hit.response
+        return self._store_result(
+            prompt, await fn(), model=model, namespace=namespace, metadata=metadata
+        )
+
+    def cached(
+        self,
+        func: F | None = None,
+        *,
+        model: str | None = None,
+        namespace: str | None = None,
+        threshold: float | None = None,
+        key: Callable[..., str] | None = None,
+    ) -> Any:
+        """Decorator that serves a function's result from the cache.
+
+        By default the prompt is the ``prompt`` keyword argument or the first positional
+        argument; pass ``key=lambda *args, **kwargs: ...`` to build it yourself. Works on
+        regular and ``async`` functions, which may return an :class:`LLMResult`.
+
+        Example::
+
+            @cache.cached(model="claude-opus-5-5")
+            def ask(prompt: str) -> LLMResult: ...
+        """
+
+        def prompt_of(args: tuple, kwargs: dict) -> str:
+            if key is not None:
+                return key(*args, **kwargs)
+            if "prompt" in kwargs:
+                return kwargs["prompt"]
+            if args and isinstance(args[0], str):
+                return args[0]
+            raise TypeError("cannot find the prompt; pass key= to cache.cached()")
+
+        options = {"model": model, "namespace": namespace, "threshold": threshold}
+
+        def decorate(fn: F) -> F:
+            if inspect.iscoroutinefunction(fn):
+
+                @functools.wraps(fn)
+                async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
+                    prompt = prompt_of(args, kwargs)
+                    return await self.aget_or_call(prompt, lambda: fn(*args, **kwargs), **options)
+
+                return async_wrapper  # type: ignore[return-value]
+
+            @functools.wraps(fn)
+            def wrapper(*args: Any, **kwargs: Any) -> Any:
+                prompt = prompt_of(args, kwargs)
+                return self.get_or_call(prompt, lambda: fn(*args, **kwargs), **options)
+
+            return wrapper  # type: ignore[return-value]
+
+        return decorate(func) if func is not None else decorate
+
+    # -- stats -------------------------------------------------------------------------
 
     @property
     def stats(self) -> CacheStats:

@@ -1,6 +1,6 @@
 """semcache: a semantic cache for LLM calls."""
 
-from .cache import CacheHit, SemanticCache
+from .cache import CacheHit, LLMResult, SemanticCache
 from .embedders import (
     CallableEmbedder,
     Embedder,
@@ -18,6 +18,7 @@ __version__ = "0.1.0"
 __all__ = [
     "SemanticCache",
     "CacheHit",
+    "LLMResult",
     "CacheEntry",
     "CacheStats",
     "ModelStats",
