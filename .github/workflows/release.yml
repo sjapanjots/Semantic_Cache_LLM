@@ -14,22 +14,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # full history, to check that the tagged commit is on main
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - run: pip install build twine
-      - name: Check the release tag matches the package version
+      - name: Check the release is on main and matches the package version
         if: github.event_name == 'release'
         run: |
           version=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' src/semcache/__init__.py)
           tag="${GITHUB_REF_NAME#v}"
           if [ "$tag" != "$version" ]; then
-            echo "::error::release tag $GITHUB_REF_NAME does not match __version__ = $version"
+            echo "::error::Release tag $GITHUB_REF_NAME does not match the package version ($version). Merge a PR that sets __version__ to $tag in src/semcache/__init__.py, then delete this release and its tag and publish the release again with main as the target."
+            exit 1
+          fi
+          git fetch --quiet --no-tags origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Release tag $GITHUB_REF_NAME points at $GITHUB_SHA, which is not on main. Delete this release and its tag, then publish the release again with main as the target."
             exit 1
           fi
       - run: python -m build
       - run: twine check --strict dist/*
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: dist
           path: dist/
@@ -42,7 +49,7 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v7
         with:
           name: dist
           path: dist/
@@ -60,7 +67,7 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v7
         with:
           name: dist
           path: dist/
