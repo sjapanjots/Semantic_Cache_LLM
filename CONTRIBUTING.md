@@ -3,8 +3,8 @@
 Thanks for helping out!
 
 ```bash
-git clone https://github.com/sjapanjots/Sematic_Cache_LLM
-cd Sematic_Cache_LLM
+git clone https://github.com/sjapanjots/Semantic_Cache_LLM
+cd Semantic_Cache_LLM
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 ```

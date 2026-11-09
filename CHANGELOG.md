@@ -6,19 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-### Changed
-- The package is now installed with `pip install semcacher` (was `semcache-llm`).
-  The import name is still `semcache`.
-
-### Added
-- `semcache.tuning`: `calibrate()` recommends a similarity threshold from labelled
-  prompt pairs (best F0.5, or the loosest threshold meeting `target_precision`), with
-  a precision/recall table and the pairs it gets wrong. `load_pairs()` reads them from
-  CSV. Example data in `examples/tuning_pairs.csv`.
-
 ## [0.1.0] - 2026-11-09
 
 ### Added
+- First release on PyPI: `pip install semcacher` (import name `semcache`).
 - Supports Python 3.10 and later.
 - `SemanticCache` with exact-match fast path and cosine-similarity lookup.
 - Embedders: dependency-free `HashingEmbedder`, `SentenceTransformerEmbedder`,
@@ -31,3 +22,5 @@ All notable changes to this project are documented here. The format follows
 - `get_or_call`, `aget_or_call` and the `@cache.cached` decorator (sync and async).
 - `wrap_openai` and `wrap_anthropic` drop-in client wrappers.
 - `semcache` CLI: `stats`, `list`, `clear`, `prune`, `prices`.
+- `semcache.tuning`: `calibrate()` recommends a similarity threshold from labelled
+  prompt pairs, and `load_pairs()` reads them from CSV.
