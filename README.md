@@ -40,6 +40,7 @@ in tokens and dollars, so you can see what the cache is worth.
 pip install semcacher                       # core (numpy only)
 pip install "semcacher[local]"              # + sentence-transformers, runs locally
 pip install "semcacher[openai]"             # + OpenAI embeddings
+pip install "semcacher[redis]"              # + shared cache in Redis
 ```
 
 You install `semcacher` and import `semcache`:
@@ -240,6 +241,27 @@ cache = SemanticCache(
   different one, because their vectors aren't comparable.
 - Use `with SemanticCache(...) as cache:` or call `cache.close()` so the latest stats
   are written.
+
+### Sharing one cache between servers (Redis)
+
+SQLite keeps the cache on one machine. To let several processes or servers reuse
+each other's answers, keep it in Redis (or any Redis-compatible server such as
+Valkey; no modules needed):
+
+```python
+from semcache import SemanticCache
+from semcache.redis_store import RedisStore
+
+cache = SemanticCache(store=RedisStore("redis://localhost:6379/0"))
+```
+
+- Every process sees the others' answers immediately.
+- Stats are shared too: each process adds its own counts to the totals in Redis,
+  so `cache.stats` shows the hit rate and money saved across all of them.
+- `prefix="team-a:"` keeps several caches apart in one database.
+- Search runs in each process: it downloads each vector once, then only fetches
+  the list of entry ids per lookup. That is fast up to tens of thousands of
+  entries per namespace.
 
 ## CLI
 
