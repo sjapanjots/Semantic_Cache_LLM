@@ -6,11 +6,6 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-### Added
-- `RedisStore` (`pip install "semcacher[redis]"`): keep the cache in Redis so several
-  processes or servers share answers and stats. Works with any Redis-compatible
-  server; stats from all processes add up instead of overwriting each other.
-
 ## [0.1.0] - 2026-11-09
 
 ### Added
@@ -20,6 +15,9 @@ All notable changes to this project are documented here. The format follows
 - Embedders: dependency-free `HashingEmbedder`, `SentenceTransformerEmbedder`,
   `OpenAIEmbedder`, and `CallableEmbedder` for anything else.
 - `InMemoryStore` and persistent `SQLiteStore`.
+- `RedisStore` (`pip install "semcacher[redis]"`): keep the cache in Redis so several
+  processes or servers share answers and stats. Works with any Redis-compatible
+  server; stats from all processes add up instead of overwriting each other.
 - Namespace and model isolation, TTL expiry, LRU `max_entries` limit.
 - Stats: hit rate, exact vs semantic hits, tokens saved, money saved and spent,
   per-model breakdown; persisted with `SQLiteStore`.
