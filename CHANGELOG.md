@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-09
+
 ### Added
 - `semcache.verifier`: `LLMVerifier` asks a cheap LLM whether a semantic match's saved
   answer really answers the new question, and turns the hit into a miss if not. Pass it

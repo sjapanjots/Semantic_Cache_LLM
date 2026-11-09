@@ -45,10 +45,12 @@ TestPyPI never accepts the same version twice either, so use a dev version
    (for example `0.2.0`), and in `CHANGELOG.md` rename `## [Unreleased]` to
    `## [0.2.0] - YYYY-MM-DD` and add a fresh empty `## [Unreleased]` above it.
 2. Merge the PR once CI is green.
-3. On GitHub: *Releases → Draft a new release*, create the tag `v0.2.0` on `main`,
-   paste the changelog section as the notes, and click *Publish release*.
-4. The *Release* workflow checks that the tag matches `__version__`, builds,
-   runs `twine check`, and uploads to PyPI. A minute later:
+3. On GitHub: *Releases → Draft a new release*, create the tag `v0.2.0` with
+   **target `main`**, paste the changelog section as the notes, and click
+   *Publish release*.
+4. The *Release* workflow checks that the tag matches `__version__` and that the
+   tagged commit is on `main`, builds, runs `twine check`, and uploads to PyPI.
+   A minute later:
 
    ```bash
    pip install --upgrade semcacher
@@ -56,6 +58,12 @@ TestPyPI never accepts the same version twice either, so use a dev version
 
 A version number can be uploaded only once, even if you delete it later, so
 always bump the version for a new upload.
+
+**If the release workflow fails its checks**, nothing was uploaded. Fix the cause
+(merge the version bump, or pick `main` as the target), then delete the failed
+release *and* its tag (*Releases* → the release → *Delete*, then *Tags* → the tag →
+*Delete*) and publish the release again. Re-running the failed workflow does not
+help: it re-uses the old tag, which still points at the old commit.
 
 ## Versioning
 
