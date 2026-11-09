@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.svg" alt="semcache" width="480">
+  <img src="https://raw.githubusercontent.com/sjapanjots/Semantic_Cache_LLM/main/assets/logo.svg" alt="semcache" width="480">
 </p>
 
 <p align="center">
@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/sjapanjots/Sematic_Cache_LLM/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/sjapanjots/Sematic_Cache_LLM/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/sjapanjots/Semantic_Cache_LLM/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/sjapanjots/Semantic_Cache_LLM/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="Python" src="https://img.shields.io/badge/python-3.10%2B-blue">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
 </p>
@@ -51,7 +51,7 @@ from semcache import SemanticCache
 From source:
 
 ```bash
-pip install git+https://github.com/sjapanjots/Sematic_Cache_LLM
+pip install git+https://github.com/sjapanjots/Semantic_Cache_LLM
 ```
 
 ## Quickstart

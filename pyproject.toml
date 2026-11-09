@@ -30,8 +30,9 @@ openai = ["openai>=1.0"]
 dev = ["pytest>=7", "ruff>=0.4"]
 
 [project.urls]
-Homepage = "https://github.com/sjapanjots/Sematic_Cache_LLM"
-Issues = "https://github.com/sjapanjots/Sematic_Cache_LLM/issues"
+Homepage = "https://github.com/sjapanjots/Semantic_Cache_LLM"
+Issues = "https://github.com/sjapanjots/Semantic_Cache_LLM/issues"
+Changelog = "https://github.com/sjapanjots/Semantic_Cache_LLM/blob/main/CHANGELOG.md"
 
 [project.scripts]
 semcache = "semcache.cli:main"
