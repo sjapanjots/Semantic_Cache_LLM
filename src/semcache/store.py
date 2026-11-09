@@ -27,6 +27,7 @@ class CacheEntry:
     model: str | None = None
     input_tokens: int = 0
     output_tokens: int = 0
+    cost: float | None = None  # explicit USD cost of the original call; overrides pricing
     metadata: dict[str, Any] = field(default_factory=dict)
     id: str = field(default_factory=lambda: uuid.uuid4().hex)
     created_at: float = field(default_factory=time.time)
