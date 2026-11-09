@@ -156,6 +156,39 @@ a conservative default; tune it on your own traffic.
 Too many wrong answers? Raise the threshold. Too few hits? Lower it, or switch to a
 neural embedder. You can also override it per call: `cache.lookup(p, threshold=0.95)`.
 
+### Calibrating the threshold from your own data
+
+Instead of guessing, label some prompt pairs as same or different meaning and let
+`calibrate` pick the threshold:
+
+```python
+from semcache import HashingEmbedder, SemanticCache, calibrate, load_pairs
+
+pairs = load_pairs("examples/tuning_pairs.csv")   # CSV columns: a,b,same
+result = calibrate(HashingEmbedder(), pairs)        # or target_precision=0.99
+print(result.summary())
+cache = SemanticCache(threshold=result.threshold)
+```
+
+```text
+embedder   hashing-1024-3
+pairs      20 (10 same, 10 different)
+recommend  threshold=0.7099  (best F0.5)
+
+threshold  precision   recall  wrong hits    F0.5
+   0.7000      83.3%    50.0%           1   0.735
+   0.7083      83.3%    50.0%           1   0.735
+   0.7099     100.0%    50.0%           0   0.833  <-
+   0.7100     100.0%    40.0%           0   0.769
+```
+
+*Precision* is the share of hits that are correct; *recall* is the share of
+same-meaning pairs that hit. By default the recommendation maximises F0.5, which
+counts a wrong answer as worse than a miss. Pass `target_precision=0.99` to get the
+loosest threshold that is still right 99% of the time. `result.mistakes()` lists the
+pairs it gets wrong. Use the same embedder you'll use in the cache, and aim for at
+least a few dozen pairs drawn from real traffic.
+
 ## Tracking savings
 
 ```python
