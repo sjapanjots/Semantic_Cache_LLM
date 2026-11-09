@@ -41,6 +41,8 @@ pip install semcacher                       # core (numpy only)
 pip install "semcacher[local]"              # + sentence-transformers, runs locally
 pip install "semcacher[openai]"             # + OpenAI embeddings
 pip install "semcacher[redis]"              # + shared cache in Redis
+pip install "semcacher[prometheus]"         # + Prometheus metrics
+pip install "semcacher[otel]"               # + OpenTelemetry metrics
 ```
 
 You install `semcacher` and import `semcache`:
@@ -223,6 +225,34 @@ cache.set(prompt, answer, cost=0.0123)                              # or give th
 Claude list prices are bundled (run `semcache prices`). Prices change, so check your
 provider's pricing page. Models without a price still count toward hit rate but add
 $0 to savings.
+
+### Dashboards: Prometheus and OpenTelemetry
+
+`semcache.metrics` publishes the same numbers as `cache.stats` (lookups, exact and
+semantic hits, misses, tokens saved, money saved and spent, hit ratio, entries, and
+per-model versions) so you can graph and alert on them.
+
+```python
+# Prometheus, with prometheus_client
+from prometheus_client import REGISTRY, start_http_server
+from semcache.metrics import PrometheusCollector
+
+REGISTRY.register(PrometheusCollector(cache))
+start_http_server(9100)                      # scrape http://host:9100/metrics
+
+# Prometheus, no extra packages: return this text from your own /metrics route
+from semcache.metrics import prometheus_text
+body = prometheus_text(cache)
+
+# OpenTelemetry: reported through whatever MeterProvider your app configured
+from semcache.metrics import register_opentelemetry
+register_opentelemetry(cache)
+```
+
+Values are read live on every scrape or export; there is nothing to update by hand.
+Main metric names: `semcache_hits_total{kind="exact|semantic"}`,
+`semcache_cost_saved_usd_total`, `semcache_hit_ratio`,
+`semcache_model_hits_total{model="..."}` (OpenTelemetry uses `semcache.hits` and so on).
 
 ## Persistence, expiry and size limits
 

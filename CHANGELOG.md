@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- `semcache.metrics`: export cache stats to monitoring. `PrometheusCollector` for
+  `prometheus_client` (`[prometheus]` extra), `prometheus_text()` for any web framework
+  with no extra packages, and `register_opentelemetry()` (`[otel]` extra). Covers
+  lookups, exact/semantic hits, misses, tokens and money saved and spent, hit ratio,
+  entries, and per-model breakdowns.
+
 ## [0.1.0] - 2026-11-09
 
 ### Added

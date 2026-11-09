@@ -28,7 +28,15 @@ dependencies = ["numpy>=1.22"]
 local = ["sentence-transformers>=2.2"]
 openai = ["openai>=1.0"]
 redis = ["redis>=5"]
-dev = ["pytest>=7", "ruff>=0.4", "fakeredis>=2.20"]
+prometheus = ["prometheus-client>=0.17"]
+otel = ["opentelemetry-api>=1.20"]
+dev = [
+    "pytest>=7",
+    "ruff>=0.4",
+    "fakeredis>=2.20",
+    "prometheus-client>=0.17",
+    "opentelemetry-sdk>=1.20",
+]
 
 [project.urls]
 Homepage = "https://github.com/sjapanjots/Semantic_Cache_LLM"
