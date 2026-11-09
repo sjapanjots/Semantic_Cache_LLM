@@ -198,6 +198,32 @@ loosest threshold that is still right 99% of the time. `result.mistakes()` lists
 pairs it gets wrong. Use the same embedder you'll use in the cache, and aim for at
 least a few dozen pairs drawn from real traffic.
 
+### Double-checking borderline matches with a cheap LLM
+
+Some different questions look almost identical to an embedder: *"convert 10 miles to
+km"* vs *"convert 20 miles to km"*. A verifier asks a small model whether the saved
+answer really answers the new question before it is reused:
+
+```python
+from anthropic import Anthropic
+from semcache import SemanticCache
+from semcache.verifier import LLMVerifier, anthropic_judge
+
+verifier = LLMVerifier(anthropic_judge(Anthropic()), verify_below=0.95)
+cache = SemanticCache(verifier=verifier, threshold=0.6)
+print(verifier.stats)   # checks, approved, rejected, judge tokens and cost
+```
+
+- Only semantic hits are checked; exact matches never are. `verify_below` skips the
+  check for very close matches.
+- Because the verifier filters out bad matches, you can lower the threshold and get
+  more hits.
+- `anthropic_judge` uses Claude Haiku 5.5 at low effort by default;
+  `openai_judge(client, model)` and any `judge(system, user) -> str` function work too.
+- Decisions are remembered per question and entry, so repeats cost nothing.
+- If the judge fails or answers unclearly, the hit is rejected (`on_error="reject"`):
+  an extra LLM call is cheaper than a wrong answer.
+
 ## Tracking savings
 
 ```python

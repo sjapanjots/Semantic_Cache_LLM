@@ -7,6 +7,11 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- `semcache.verifier`: `LLMVerifier` asks a cheap LLM whether a semantic match's saved
+  answer really answers the new question, and turns the hit into a miss if not. Pass it
+  as `SemanticCache(verifier=...)`. Includes `anthropic_judge` (Claude Haiku 5.5 at low
+  effort by default) and `openai_judge`, `verify_below` to skip close matches,
+  remembered decisions, a safe `on_error` default, and `verifier.stats`.
 - `semcache.metrics`: export cache stats to monitoring. `PrometheusCollector` for
   `prometheus_client` (`[prometheus]` extra), `prometheus_text()` for any web framework
   with no extra packages, and `register_opentelemetry()` (`[otel]` extra). Covers

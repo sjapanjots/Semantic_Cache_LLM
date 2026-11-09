@@ -63,6 +63,9 @@ class SemanticCache:
         max_entries: cap on stored entries; the least recently used are evicted.
         stats_flush_every: with a persistent store, save stats every N operations
             (they are always saved on :meth:`close`).
+        verifier: optional ``verifier(prompt, entry, similarity) -> bool`` called on
+            semantic (not exact) hits; returning False turns the hit into a miss. See
+            :class:`semcache.verifier.LLMVerifier`.
     """
 
     def __init__(
@@ -77,6 +80,7 @@ class SemanticCache:
         ttl: float | None = None,
         max_entries: int | None = None,
         stats_flush_every: int = 20,
+        verifier: Callable[[str, CacheEntry, float], bool] | None = None,
     ) -> None:
         if store is not None and path is not None:
             raise ValueError("pass either store or path, not both")
@@ -99,6 +103,7 @@ class SemanticCache:
         self.ttl = ttl
         self.max_entries = max_entries
         self.stats_flush_every = max(1, stats_flush_every)
+        self.verifier = verifier
         saved = self.store.load_stats()
         self._stats = StatsTracker(CacheStats.from_dict(saved) if saved else None)
         self._ops_since_flush = 0
@@ -185,6 +190,12 @@ class SemanticCache:
                     entry, similarity = candidate, score
                     break
 
+        # The verifier may call an LLM, so it runs without holding the lock.
+        if entry is not None and not exact and self.verifier is not None:
+            if not self.verifier(prompt, entry, similarity):
+                entry = None
+
+        with self._lock:
             if entry is None:
                 self._stats.record_miss(model)
                 self._after_op()
