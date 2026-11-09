@@ -1,6 +1,6 @@
 """Cache OpenAI chat completions with a drop-in wrapper.
 
-pip install "semcache-llm[openai]"
+pip install "semcacher[openai]"
 export OPENAI_API_KEY=...
 python examples/openai_client.py
 """

@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- The package is now installed with `pip install semcacher` (was `semcache-llm`).
+  The import name is still `semcache`.
+
 ### Added
 - `semcache.tuning`: `calibrate()` recommends a similarity threshold from labelled
   prompt pairs (best F0.5, or the loosest threshold meeting `target_precision`), with

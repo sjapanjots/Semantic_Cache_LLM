@@ -118,7 +118,7 @@ class HashingEmbedder:
 class SentenceTransformerEmbedder:
     """Local neural embeddings via ``sentence-transformers``.
 
-    Install with ``pip install semcache-llm[local]``.
+    Install with ``pip install semcacher[local]``.
     """
 
     def __init__(self, model: str = "sentence-transformers/all-MiniLM-L6-v2", **kwargs: Any):
@@ -127,7 +127,7 @@ class SentenceTransformerEmbedder:
         except ImportError as exc:  # pragma: no cover - depends on optional extra
             raise ImportError(
                 "SentenceTransformerEmbedder needs sentence-transformers: "
-                "pip install 'semcache-llm[local]'"
+                "pip install 'semcacher[local]'"
             ) from exc
         self._model = SentenceTransformer(model, **kwargs)
         self.name = f"st:{model}"
@@ -139,7 +139,7 @@ class SentenceTransformerEmbedder:
 
 
 class OpenAIEmbedder:
-    """Embeddings from the OpenAI API (``pip install semcache-llm[openai]``).
+    """Embeddings from the OpenAI API (``pip install semcacher[openai]``).
 
     Pass an existing ``openai.OpenAI`` client, or one is created from the environment.
     """
@@ -150,7 +150,7 @@ class OpenAIEmbedder:
                 from openai import OpenAI
             except ImportError as exc:  # pragma: no cover - depends on optional extra
                 raise ImportError(
-                    "OpenAIEmbedder needs the openai package: pip install 'semcache-llm[openai]'"
+                    "OpenAIEmbedder needs the openai package: pip install 'semcacher[openai]'"
                 ) from exc
             client = OpenAI()
         self._client = client

@@ -37,9 +37,15 @@ in tokens and dollars, so you can see what the cache is worth.
 ## Install
 
 ```bash
-pip install semcache-llm                    # core (numpy only)
-pip install "semcache-llm[local]"           # + sentence-transformers, runs locally
-pip install "semcache-llm[openai]"          # + OpenAI embeddings
+pip install semcacher                       # core (numpy only)
+pip install "semcacher[local]"              # + sentence-transformers, runs locally
+pip install "semcacher[openai]"             # + OpenAI embeddings
+```
+
+You install `semcacher` and import `semcache`:
+
+```python
+from semcache import SemanticCache
 ```
 
 From source:
