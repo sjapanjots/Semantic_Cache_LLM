@@ -6,7 +6,36 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-## [0.2.0] - 2026-11-09
+## [0.2.0] - 2026-11-12
+
+### Fixed
+- **Wrong answers from the exact-match path:** prompts that differed only in symbols
+  were treated as the same question ("What is 2+2?" and "What is 2-2?", "x > 5" and
+  "x < 5"), so `set()` overwrote one with the other and `get()` returned the wrong
+  answer. Exact matching now ignores only case, spacing, Unicode form and trailing
+  `?`/`!`/`.` (new `exact_key()`).
+- **Wrong answers from the built-in matcher:** `HashingEmbedder` dropped one-letter
+  words and operators and gave numbers little weight, so "read a file in C" and
+  "in R" scored 1.0. It now keeps them and weighs them up; on the bundled sample pairs the default
+  threshold gives no wrong hits and finds more rewordings.
+- **Wrong answers from the client wrappers:** images and other non-text parts of the
+  last message were ignored, so two different images with the same question shared
+  an answer. They are now part of the match.
+- Price fallback priced other models by prefix (`gpt-x-mini` at `gpt-x` prices). Only
+  snapshot ids (`-2024-08-06`, `-20240806`, `@...`, `:...`, `-latest`) fall back now.
+- The async API (`aget_or_call`, async `@cached`, async OpenAI/Anthropic clients)
+  blocked the event loop while embedding or verifying; that work now runs in a thread.
+  New `alookup()` and `aset()`.
+- `cache.clear(namespace)` and `semcache clear --namespace` missed entries created by
+  the client wrappers.
+- A full cache (`max_entries`) scanned the whole store on every write; it now evicts
+  the least recently used tenth at once.
+
+### Changed
+- **Upgrade note:** the built-in matcher is now named `hashing-v2-...`. A SQLite or
+  Redis cache built with 0.1.0's default matcher is refused with
+  `EmbedderMismatchError` instead of mixing incompatible vectors; clear it once with
+  `semcache clear --db <file>` (or `cache.clear()`).
 
 ### Added
 - `semcache.verifier`: `LLMVerifier` asks a cheap LLM whether a semantic match's saved

@@ -27,6 +27,7 @@ __all__ = [
     "OpenAIEmbedder",
     "CallableEmbedder",
     "normalize_text",
+    "exact_key",
     "l2_normalize",
 ]
 
@@ -45,12 +46,27 @@ _PUNCT = re.compile(r"[^\w\s]")
 def normalize_text(text: str) -> str:
     """Lower-case, strip accents, punctuation and repeated whitespace.
 
-    Used for the exact-match fast path and by :class:`HashingEmbedder`.
+    Too aggressive for deciding that two prompts are *the same* ("2+2" and "2-2" both
+    become "2 2"); use :func:`exact_key` for that.
     """
     text = unicodedata.normalize("NFKD", text)
     text = "".join(ch for ch in text if not unicodedata.combining(ch))
     text = _PUNCT.sub(" ", text.lower())
     return _WS.sub(" ", text).strip()
+
+
+_TRAILING = re.compile(r"[\s?!.。？！]+$")
+
+
+def exact_key(text: str) -> str:
+    """Key for the exact-match fast path: two prompts with the same key are the same.
+
+    Ignores only differences that never change the meaning: letter case, Unicode form,
+    repeated whitespace and trailing ``?``, ``!`` or ``.``. Symbols and inner
+    punctuation are kept, so "What is 2+2?" and "What is 2-2?" stay different.
+    """
+    text = unicodedata.normalize("NFKC", text).casefold()
+    return _TRAILING.sub("", _WS.sub(" ", text).strip())
 
 
 def l2_normalize(matrix: np.ndarray) -> np.ndarray:
@@ -67,8 +83,30 @@ _STOP_WORDS = frozenset(
     """a an the is are was were be been am do does did of to in on at for by with and or
     but if then so than that this these those it its i me my we our you your he she they
     them their what which who whom how can could would should will shall may might must
-    please tell give show explain""".split()
+    please tell give show explain s t d ll re ve m""".split()
 )
+
+# Words, plus operators that change meaning ("2+2" vs "2*2", "==" vs "=", "C++", "C#").
+# A run of operator characters is one token, so "==" differs from "=".
+_TOKEN = re.compile(r"\w+|!=|[+\-*/<>=%^&|~]+|[#@$]")
+_INNER_HYPHEN = re.compile(r"(?<=[^\W\d_])-(?=[^\W\d_])")  # "state-of-the-art"
+_PROSE_DASH = re.compile(r"\s[-\u2013\u2014]\s|[\u2013\u2014]")  # "Python - how to ..."
+
+
+def _token_weight(token: str) -> float:
+    """Extra weight for short tokens that often decide the meaning."""
+    if not token[0].isalnum() and token[0] != "_":
+        return 6.0  # operator: "+" vs "*", "<" vs ">"
+    if len(token) <= 2 or any(ch.isdigit() for ch in token):
+        return 3.0  # one-letter names ("C", "R", "x") and numbers
+    return 1.0
+
+
+def _tokens(text: str) -> list[str]:
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(ch for ch in text if not unicodedata.combining(ch)).lower()
+    text = _PROSE_DASH.sub(" ", _INNER_HYPHEN.sub(" ", text))
+    return [t for t in _TOKEN.findall(text) if t not in _STOP_WORDS]
 
 
 class HashingEmbedder:
@@ -86,12 +124,17 @@ class HashingEmbedder:
         self.dim = dim
         self.char_ngram = char_ngram
         self.word_weight = word_weight
-        self.name = f"hashing-{dim}-{char_ngram}"
+        # v2: one-letter words and symbols count ("C" vs "R", "x > 5" vs "x < 5").
+        self.name = f"hashing-v2-{dim}-{char_ngram}"
         self.recommended_threshold = 0.7
 
     def _features(self, text: str) -> list[tuple[str, float]]:
-        words = [w for w in normalize_text(text).split() if len(w) > 1 and w not in _STOP_WORDS]
-        feats: list[tuple[str, float]] = [("w:" + w, self.word_weight) for w in words]
+        words = _tokens(text)
+        # Short tokens (one letter, a number, an operator) have few character n-grams,
+        # yet often decide the meaning ("C" vs "R", "10" vs "20", "<" vs ">").
+        feats: list[tuple[str, float]] = [
+            ("w:" + w, self.word_weight * _token_weight(w)) for w in words
+        ]
         feats += [
             ("b:" + a + " " + b, self.word_weight) for a, b in zip(words, words[1:], strict=False)
         ]

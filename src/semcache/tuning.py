@@ -36,7 +36,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .embedders import Embedder, normalize_text
+from .embedders import Embedder, exact_key
 
 __all__ = ["LabeledPair", "ThresholdPoint", "CalibrationResult", "calibrate", "load_pairs"]
 
@@ -164,7 +164,7 @@ def _score_pairs(embedder: Embedder, pairs: list[LabeledPair]) -> list[float]:
     vectors = np.asarray(embedder.embed(texts), dtype=np.float32)
     scores = []
     for p in pairs:
-        if normalize_text(p.a) and normalize_text(p.a) == normalize_text(p.b):
+        if exact_key(p.a) and exact_key(p.a) == exact_key(p.b):
             scores.append(1.0)
         else:
             scores.append(float(vectors[index[p.a]] @ vectors[index[p.b]]))

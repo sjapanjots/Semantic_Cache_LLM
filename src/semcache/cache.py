@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import functools
 import inspect
 import threading
@@ -12,13 +13,23 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TypeVar
 
-from .embedders import Embedder, HashingEmbedder, normalize_text
+from .embedders import Embedder, HashingEmbedder, exact_key
 from .pricing import PriceBook
 from .sqlite_store import SQLiteStore
 from .stats import CacheStats, StatsTracker
 from .store import BaseStore, CacheEntry, InMemoryStore
 
-__all__ = ["SemanticCache", "CacheHit", "LLMResult"]
+__all__ = ["SemanticCache", "CacheHit", "LLMResult", "in_namespace"]
+
+
+def in_namespace(scope: str, namespace: str) -> bool:
+    """Whether an entry's scope belongs to ``namespace``.
+
+    Scopes look like ``"<namespace>::<model>"``. The client wrappers add a hash of the
+    request (``"anthropic/1a2b3c::<model>"``), which still belongs to ``"anthropic"``.
+    """
+    return scope.startswith(f"{namespace}::") or scope.startswith(f"{namespace}/")
+
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -60,7 +71,8 @@ class SemanticCache:
         pricing: a :class:`PriceBook`, or a ``{"model": (input, output)}`` mapping of
             USD per million tokens merged over the bundled defaults.
         ttl: seconds an entry stays valid. ``None`` keeps entries forever.
-        max_entries: cap on stored entries; the least recently used are evicted.
+        max_entries: cap on stored entries. When it is exceeded, the least recently
+            used tenth are evicted at once, so the store is not scanned on every write.
         stats_flush_every: with a persistent store, save stats every N operations
             (they are always saved on :meth:`close`).
         verifier: optional ``verifier(prompt, entry, similarity) -> bool`` called on
@@ -142,7 +154,9 @@ class SemanticCache:
     def _evict(self) -> None:
         if self.max_entries is None or len(self.store) <= self.max_entries:
             return
-        excess = len(self.store) - self.max_entries
+        # Make room for a tenth more writes, so a full cache isn't scanned on every set().
+        target = self.max_entries - self.max_entries // 10
+        excess = len(self.store) - target
         oldest = sorted(self.store.entries(), key=lambda e: e.last_used_at)[:excess]
         for entry in oldest:
             self.store.delete(entry.id)
@@ -165,7 +179,7 @@ class SemanticCache:
     ) -> CacheHit | None:
         """Find a cached answer for ``prompt``. Returns ``None`` on a miss."""
         scope = self._scope(namespace, model)
-        normalized = normalize_text(prompt)
+        normalized = exact_key(prompt)
         threshold = self.threshold if threshold is None else threshold
 
         now = time.time()
@@ -232,7 +246,7 @@ class SemanticCache:
         with :attr:`pricing` and credited as savings every time this entry is served.
         Pass ``cost`` (USD) instead to skip the price lookup.
         """
-        normalized = normalize_text(prompt)
+        normalized = exact_key(prompt)
         scope = self._scope(namespace, model)
         entry = CacheEntry(
             prompt=prompt,
@@ -301,13 +315,26 @@ class SemanticCache:
         threshold: float | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> Any:
-        """Async version of :meth:`get_or_call`; ``fn`` is awaited on a miss."""
-        hit = self.lookup(prompt, model=model, namespace=namespace, threshold=threshold)
+        """Async version of :meth:`get_or_call`; ``fn`` is awaited on a miss.
+
+        Lookups and writes run in a worker thread, so an embedding API call or a
+        verifier never blocks the event loop.
+        """
+        hit = await self.alookup(prompt, model=model, namespace=namespace, threshold=threshold)
         if hit is not None:
             return hit.response
-        return self._store_result(
-            prompt, await fn(), model=model, namespace=namespace, metadata=metadata
+        result = await fn()
+        return await asyncio.to_thread(
+            self._store_result, prompt, result, model=model, namespace=namespace, metadata=metadata
         )
+
+    async def alookup(self, prompt: str, **kwargs: Any) -> CacheHit | None:
+        """:meth:`lookup` without blocking the event loop."""
+        return await asyncio.to_thread(functools.partial(self.lookup, prompt, **kwargs))
+
+    async def aset(self, prompt: str, response: Any, **kwargs: Any) -> CacheEntry:
+        """:meth:`set` without blocking the event loop."""
+        return await asyncio.to_thread(functools.partial(self.set, prompt, response, **kwargs))
 
     def cached(
         self,
@@ -395,8 +422,7 @@ class SemanticCache:
         """Remove all entries, or only those in ``namespace`` (every model)."""
         if namespace is None:
             return self.store.clear()
-        prefix = f"{namespace}::"
-        scopes = {e.scope for e in self.store.entries() if e.scope.startswith(prefix)}
+        scopes = {e.scope for e in self.store.entries() if in_namespace(e.scope, namespace)}
         return sum(self.store.clear(s) for s in scopes)
 
     def __len__(self) -> int:
@@ -404,7 +430,7 @@ class SemanticCache:
 
     def __contains__(self, prompt: str) -> bool:
         scope = self._scope(None, None)
-        return self.store.find_exact(normalize_text(prompt), scope) is not None
+        return self.store.find_exact(exact_key(prompt), scope) is not None
 
     def close(self) -> None:
         self.flush_stats()

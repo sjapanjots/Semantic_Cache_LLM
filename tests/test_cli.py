@@ -60,3 +60,12 @@ def test_prices(capsys):
 def test_missing_file(tmp_path):
     with pytest.raises(SystemExit, match="no cache file"):
         main(["stats", "--db", str(tmp_path / "nope.db")])
+
+
+def test_clear_namespace_includes_wrapper_entries(tmp_path, capsys):
+    path = tmp_path / "w.db"
+    with SemanticCache(path=path) as cache:
+        cache.set("a", "1", namespace="openai/abc123")
+        cache.set("b", "2")
+    main(["clear", "--db", str(path), "--namespace", "openai"])
+    assert "removed 1" in capsys.readouterr().out

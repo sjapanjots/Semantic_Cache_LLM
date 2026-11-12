@@ -154,3 +154,67 @@ def test_truncated_openai_answers_not_cached(cache):
     for _ in range(2):
         client.chat.completions.create(model="gpt-test", messages=[user("tell me a story")])
     assert len(calls) == 2
+
+
+def image_message(data, text="Describe this image"):
+    return user(
+        [
+            {
+                "type": "image",
+                "source": {"type": "base64", "media_type": "image/png", "data": data},
+            },
+            {"type": "text", "text": text},
+        ]
+    )
+
+
+def test_different_images_never_share_an_answer(cache):
+    raw, create = fake_anthropic()
+    client = wrap_anthropic(raw, cache)
+    for data in ("AAAA", "BBBB", "AAAA"):
+        client.messages.create(model="claude-test", max_tokens=10, messages=[image_message(data)])
+    assert len(create.calls) == 2  # the repeated image is served from the cache
+
+
+def test_text_block_list_and_plain_string_match(cache):
+    raw, create = fake_openai()
+    client = wrap_openai(raw, cache)
+    client.chat.completions.create(model="gpt-test", messages=[user("hello there")])
+    client.chat.completions.create(
+        model="gpt-test", messages=[user([{"type": "text", "text": "hello there"}])]
+    )
+    assert len(create.calls) == 1
+
+
+def test_async_wrapper_does_not_block_event_loop(cache):
+    import time
+
+    from semcache import CallableEmbedder
+
+    def slow_embed(texts):
+        time.sleep(0.2)
+        return [[1.0, float(len(t))] for t in texts]
+
+    slow_cache = SemanticCache(embedder=CallableEmbedder(slow_embed, "slow"))
+
+    async def create(**kwargs):
+        return FakeResponse({"text": "hi", "usage": {"input_tokens": 1, "output_tokens": 1}})
+
+    client = wrap_anthropic(SimpleNamespace(messages=SimpleNamespace(create=create)), slow_cache)
+
+    async def run():
+        ticks = 0
+
+        async def ticker():
+            nonlocal ticks
+            for _ in range(20):
+                await asyncio.sleep(0.02)
+                ticks += 1
+
+        task = asyncio.create_task(ticker())
+        await client.messages.create(model="claude-test", messages=[user("hello there")])
+        seen = ticks
+        await task
+        return seen
+
+    assert asyncio.run(run()) > 0
