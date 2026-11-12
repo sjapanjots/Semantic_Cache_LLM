@@ -119,8 +119,23 @@ How requests are matched:
 | Model | Must match exactly |
 | System prompt, earlier turns, tools, temperature, max tokens, ... | Hashed; must match exactly |
 | `timeout`, `extra_headers`, `user`, `metadata` | Ignored |
-| `stream=True` | Passed through, not cached |
+| `stream=True` | Cached too: a miss streams live and is saved at the end; a hit is replayed as a stream |
 | Responses stopped by `max_tokens` / `refusal` / `length` / `content_filter` | Not cached |
+
+**Streaming.** `stream=True` works with both wrappers, sync and async:
+
+```python
+with client.messages.create(model="claude-opus-5-5", max_tokens=1024, stream=True,
+                            messages=[{"role": "user", "content": question}]) as stream:
+    for event in stream:          # live from the API on a miss, replayed on a hit
+        ...
+```
+
+On a miss you get the provider's stream unchanged, and the answer is saved once the
+stream finishes normally; if you stop reading early, nothing is saved. On a hit the
+saved answer is replayed as the provider's own event types (each content block's
+text arrives in one event). Streamed and non-streamed requests share entries. For
+OpenAI, pass `stream_options={"include_usage": True}` so savings can be counted.
 
 ### 2. Decorate a function
 
@@ -369,7 +384,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and [CHANGELOG.md](CHANGELOG.md).
 
 - Pluggable vector indexes (FAISS, hnswlib) for millions of entries
 - Postgres/pgvector store
-- Streaming support in the client wrappers
 - OpenAI Responses API in `wrap_openai`
 
 ## License

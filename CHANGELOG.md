@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Streaming in the client wrappers (`semcache.streaming`): `stream=True` requests to
+  `wrap_anthropic` and `wrap_openai`, sync and async, are now cached. A miss passes the
+  provider's stream through unchanged and saves the response once it completes; a hit
+  replays it as the provider's own stream events. Streamed and non-streamed requests
+  share entries. Supports text, tool use, thinking and citations (Anthropic) and
+  content, refusals and tool calls (OpenAI).
+
 ## [0.2.0] - 2026-11-12
 
 ### Fixed
