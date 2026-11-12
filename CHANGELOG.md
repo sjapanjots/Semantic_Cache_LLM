@@ -7,12 +7,23 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- Vector indexes (`semcache.index`): `index="hnsw"` on `SemanticCache`,
+  `InMemoryStore` or `SQLiteStore` uses an HNSW graph (`pip install "semcacher[hnsw]"`)
+  for fast lookups in very large caches: 0.30 ms instead of 1.35 ms at 100,000
+  entries, finding the closest entry 99.7% of the time. `ExactIndex` stays the
+  default; any object with `add`/`remove`/`search` can be plugged in. SQLite caches
+  rebuild their index in bulk when they open.
 - Streaming in the client wrappers (`semcache.streaming`): `stream=True` requests to
   `wrap_anthropic` and `wrap_openai`, sync and async, are now cached. A miss passes the
   provider's stream through unchanged and saves the response once it completes; a hit
   replays it as the provider's own stream events. Streamed and non-streamed requests
   share entries. Supports text, tool use, thinking and citations (Anthropic) and
   content, refusals and tool calls (OpenAI).
+
+### Fixed
+- Exact search rebuilt its whole matrix after every write, so alternating writes and
+  lookups slowed down with cache size (61 ms per write + lookup at 50,000 entries,
+  now 1.8 ms).
 
 ## [0.2.0] - 2026-11-12
 

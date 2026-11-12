@@ -11,6 +11,7 @@ from typing import Any
 
 import numpy as np
 
+from .index import IndexSpec
 from .store import BaseStore, CacheEntry, InMemoryStore
 
 __all__ = ["SQLiteStore", "EmbedderMismatchError"]
@@ -51,10 +52,12 @@ class SQLiteStore(BaseStore):
     :class:`InMemoryStore`; every write goes to both. Responses must be JSON-serialisable
     (strings, numbers, lists, dicts).
 
-    Writes from *other* processes become visible after :meth:`reload`.
+    Writes from *other* processes become visible after :meth:`reload`. ``index`` picks
+    how vectors are searched (see :mod:`semcache.index`); it is rebuilt from the file
+    when the store opens.
     """
 
-    def __init__(self, path: str | Path = "semcache.db") -> None:
+    def __init__(self, path: str | Path = "semcache.db", *, index: IndexSpec = None) -> None:
         self.path = str(path)
         if self.path != ":memory:":
             Path(self.path).parent.mkdir(parents=True, exist_ok=True)
@@ -62,7 +65,7 @@ class SQLiteStore(BaseStore):
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.executescript(_SCHEMA)
         self._lock = threading.RLock()
-        self._mem = InMemoryStore()
+        self._mem = InMemoryStore(index=index)
         self.reload()
 
     # -- (de)serialisation -------------------------------------------------------------
@@ -104,8 +107,8 @@ class SQLiteStore(BaseStore):
         """Re-read every row from disk into the in-memory index."""
         with self._lock:
             self._mem.clear()
-            for row in self._conn.execute("SELECT * FROM entries"):
-                self._mem.add(self._row_to_entry(row))
+            rows = self._conn.execute("SELECT * FROM entries").fetchall()
+            self._mem.add_many([self._row_to_entry(row) for row in rows])
 
     def add(self, entry: CacheEntry) -> None:
         response = self._dumps(entry.response, "responses")

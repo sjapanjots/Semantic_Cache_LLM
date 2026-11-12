@@ -8,6 +8,7 @@ from .embedders import (
     OpenAIEmbedder,
     SentenceTransformerEmbedder,
 )
+from .index import ExactIndex, HNSWIndex, VectorIndex
 from .pricing import DEFAULT_PRICES, ModelPrice, PriceBook
 from .redis_store import RedisStore
 from .sqlite_store import EmbedderMismatchError, SQLiteStore
@@ -29,6 +30,9 @@ __all__ = [
     "DEFAULT_PRICES",
     "BaseStore",
     "InMemoryStore",
+    "VectorIndex",
+    "ExactIndex",
+    "HNSWIndex",
     "SQLiteStore",
     "RedisStore",
     "EmbedderMismatchError",
