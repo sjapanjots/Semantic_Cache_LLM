@@ -10,6 +10,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from . import __version__
+from .cache import in_namespace
 from .pricing import PriceBook
 from .sqlite_store import SQLiteStore
 from .stats import CacheStats
@@ -59,8 +60,7 @@ def _cmd_list(args: argparse.Namespace) -> int:
 def _cmd_clear(args: argparse.Namespace) -> int:
     store = _open(args.db)
     if args.namespace:
-        prefix = f"{args.namespace}::"
-        scopes = {e.scope for e in store.entries() if e.scope.startswith(prefix)}
+        scopes = {e.scope for e in store.entries() if in_namespace(e.scope, args.namespace)}
         removed = sum(store.clear(s) for s in scopes)
     else:
         removed = store.clear()

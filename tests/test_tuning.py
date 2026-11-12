@@ -133,7 +133,7 @@ def test_example_file_and_summary():
     assert len(pairs) == 20
     assert result.recommended.false_hits == 0
     text = result.summary()
-    assert "recommend" in text and "<-" in text and "hashing-1024-3" in text
+    assert "recommend" in text and "<-" in text and "hashing-v2-1024-3" in text
 
 
 def test_recommended_threshold_matches_cache_behaviour():

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import threading
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -43,6 +44,9 @@ DEFAULT_PRICES: dict[str, ModelPrice] = {
 
 PriceLike = ModelPrice | tuple | list
 
+# What may follow a registered model name in a snapshot id of that same model.
+_SNAPSHOT = re.compile(r"(-\d{4}-\d{2}-\d{2}|-\d{8}|@.+|:.+|-latest)$")
+
 
 def _as_price(value: PriceLike) -> ModelPrice:
     if isinstance(value, ModelPrice):
@@ -54,8 +58,10 @@ def _as_price(value: PriceLike) -> ModelPrice:
 class PriceBook:
     """Maps model names to prices.
 
-    Lookups try an exact match first and then the longest registered prefix, so a
-    suffixed name such as ``"claude-opus-5-5-fast"`` falls back to ``"claude-opus-5-5"``.
+    Lookups try an exact match first. A dated or pinned snapshot of a registered model
+    (``"gpt-x-2024-08-06"``, ``"model-20250101"``, ``"model@20250101"``, ``"model:1"``,
+    ``"model-latest"``) falls back to that model's price. Other suffixes do not, so
+    ``"gpt-x-mini"`` is never priced as ``"gpt-x"``: register it, or set ``default``.
 
     Args:
         prices: extra or overriding prices, ``{"model": ModelPrice | (input, output)}``.
@@ -86,7 +92,11 @@ class PriceBook:
             price = self._prices.get(model)
             if price is not None:
                 return price
-            matches = [name for name in self._prices if model.startswith(name)]
+            matches = [
+                name
+                for name in self._prices
+                if model.startswith(name) and _SNAPSHOT.match(model[len(name) :])
+            ]
             if matches:
                 return self._prices[max(matches, key=len)]
         return self.default

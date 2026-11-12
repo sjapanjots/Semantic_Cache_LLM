@@ -20,10 +20,23 @@ def test_register_and_override():
     assert book.cost("my-model", 1_000_000, 1_000_000) == pytest.approx(1.0)
 
 
-def test_longest_prefix_fallback():
+def test_snapshot_fallback_uses_longest_match():
     book = PriceBook({"gpt-x": (1, 1), "gpt-x-mini": (0.1, 0.1)}, include_defaults=False)
     assert book.get("gpt-x-mini-2026-01-01") == ModelPrice(0.1, 0.1)
-    assert book.get("gpt-x-turbo") == ModelPrice(1, 1)
+    assert book.get("gpt-x-2026-01-01") == ModelPrice(1, 1)
+    assert book.get("gpt-x-20260101") == ModelPrice(1, 1)
+    assert book.get("gpt-x@20260101") == ModelPrice(1, 1)
+    assert book.get("gpt-x:1") == ModelPrice(1, 1)
+    assert book.get("gpt-x-latest") == ModelPrice(1, 1)
+
+
+def test_other_suffixes_are_not_priced_as_the_base_model():
+    book = PriceBook({"gpt-x": (2.5, 10)}, include_defaults=False)
+    assert book.get("gpt-x-mini") is None  # a different, cheaper model
+    assert book.get("gpt-x-turbo") is None
+    assert book.get("gpt-xl") is None
+    assert book.cost("gpt-x-mini", 10**6, 10**6) == 0.0
+    assert PriceBook({"gpt-x": (1, 1)}, default=(9, 9)).get("gpt-x-mini") == ModelPrice(9, 9)
 
 
 def test_unknown_model_costs_nothing_unless_default():

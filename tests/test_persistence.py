@@ -106,3 +106,21 @@ def test_max_entries_evicts_least_recently_used(monkeypatch):
 def test_invalid_limits(kwargs):
     with pytest.raises(ValueError):
         SemanticCache(**kwargs)
+
+
+def test_full_cache_is_not_rescanned_on_every_write():
+    from semcache import InMemoryStore
+
+    class CountingStore(InMemoryStore):
+        scans = 0
+
+        def entries(self, scope=None):
+            CountingStore.scans += 1
+            return super().entries(scope)
+
+    cache = SemanticCache(store=CountingStore(), max_entries=100)
+    for i in range(300):
+        cache.set(f"question number {i} about topic {i * 7}", i)
+    assert len(cache) <= 100
+    assert CountingStore.scans <= 25  # one scan per ~10 writes, not one per write
+    assert cache.get("question number 299 about topic 2093") == 299  # newest kept

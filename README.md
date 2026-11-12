@@ -180,15 +180,15 @@ cache = SemanticCache(threshold=result.threshold)
 ```
 
 ```text
-embedder   hashing-1024-3
+embedder   hashing-v2-1024-3
 pairs      20 (10 same, 10 different)
-recommend  threshold=0.7099  (best F0.5)
+recommend  threshold=0.7087  (best F0.5)
 
 threshold  precision   recall  wrong hits    F0.5
-   0.7000      83.3%    50.0%           1   0.735
-   0.7083      83.3%    50.0%           1   0.735
-   0.7099     100.0%    50.0%           0   0.833  <-
-   0.7100     100.0%    40.0%           0   0.769
+   0.6725      87.5%    70.0%           1   0.833
+   0.6800     100.0%    70.0%           0   0.921
+   0.7087     100.0%    70.0%           0   0.921  <-
+   0.7099     100.0%    60.0%           0   0.882
 ```
 
 *Precision* is the share of hits that are correct; *recall* is the share of
@@ -368,9 +368,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and [CHANGELOG.md](CHANGELOG.md).
 ## Roadmap
 
 - Pluggable vector indexes (FAISS, hnswlib) for millions of entries
-- Redis and Postgres/pgvector stores
+- Postgres/pgvector store
 - Streaming support in the client wrappers
-- Optional LLM-judged verification of borderline hits
+- OpenAI Responses API in `wrap_openai`
 
 ## License
 

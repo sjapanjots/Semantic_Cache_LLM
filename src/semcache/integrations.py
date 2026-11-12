@@ -12,10 +12,10 @@
 How requests are matched:
 
 * The **last user message** is the text compared by meaning.
-* Everything else (system prompt, earlier turns, tools, temperature, max tokens, ...)
-  is hashed into the cache namespace, so a hit only happens when that context is
-  identical. Two people asking the same question inside different conversations
-  never share an answer.
+* Everything else (system prompt, earlier turns, images and files in the last
+  message, tools, temperature, max tokens, ...) is hashed into the cache namespace,
+  so a hit only happens when that context is identical. Two people asking the same
+  question inside different conversations never share an answer.
 * ``stream=True`` requests are passed through uncached.
 * Incomplete answers are not stored: Anthropic ``stop_reason`` of ``max_tokens``,
   ``refusal`` or ``pause_turn``, and OpenAI ``finish_reason`` of ``length`` or
@@ -28,6 +28,7 @@ Sync and async clients are both supported.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import inspect
 import json
@@ -135,11 +136,17 @@ class _ChatCacher:
         messages = list(kwargs.get("messages") or [])
         if not messages or _field(messages[-1], "role") != "user":
             return None
-        prompt = _text_of(_field(messages[-1], "content"))
+        content = _field(messages[-1], "content")
+        prompt = _text_of(content)
         if not prompt:
             return None
         context = {k: v for k, v in kwargs.items() if k not in _IGNORED_PARAMS}
         context["history"] = [_to_jsonable(m) for m in messages[:-1]]
+        if isinstance(content, list):
+            # Images, documents and other non-text parts must match exactly too.
+            attachments = [_to_jsonable(p) for p in content if _field(p, "type") != "text"]
+            if attachments:
+                context["attachments"] = attachments
         digest = hashlib.sha256(
             json.dumps(context, sort_keys=True, default=str).encode("utf-8")
         ).hexdigest()[:16]
@@ -172,12 +179,13 @@ def _cached_create(create: Callable[..., Any], cacher: _ChatCacher) -> Callable[
     if inspect.iscoroutinefunction(create):
 
         async def acreate(**kwargs: Any) -> Any:
-            cached, key = cacher.lookup(kwargs)
+            # Cache work may call an embedding API; keep it off the event loop.
+            cached, key = await asyncio.to_thread(cacher.lookup, kwargs)
             if cached is not None:
                 return cached
             response = await create(**kwargs)
             if key is not None:
-                cacher.store(kwargs, key, response)
+                await asyncio.to_thread(cacher.store, kwargs, key, response)
             return response
 
         return acreate

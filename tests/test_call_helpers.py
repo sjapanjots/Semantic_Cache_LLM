@@ -107,3 +107,46 @@ def test_embedding_reused_between_miss_and_set():
     cache = SemanticCache(embedder=CallableEmbedder(embed, "toy"))
     cache.get_or_call("a brand new prompt", lambda: "x")
     assert seen == ["a brand new prompt"]
+
+
+def test_async_calls_do_not_block_the_event_loop():
+    import time
+
+    from semcache import CallableEmbedder
+
+    def slow_embed(texts):
+        time.sleep(0.2)
+        return [[1.0, float(len(t))] for t in texts]
+
+    cache = SemanticCache(embedder=CallableEmbedder(slow_embed, "slow"))
+
+    async def llm():
+        return "x"
+
+    async def run():
+        ticks = 0
+
+        async def ticker():
+            nonlocal ticks
+            for _ in range(30):
+                await asyncio.sleep(0.02)
+                ticks += 1
+
+        task = asyncio.create_task(ticker())
+        await cache.aget_or_call("some question", llm)
+        seen = ticks
+        await task
+        return seen
+
+    assert asyncio.run(run()) > 0
+
+
+def test_alookup_and_aset(cache):
+    async def run():
+        await cache.aset("async question", "answer", model="m", cost=0.1)
+        hit = await cache.alookup("async question", model="m")
+        miss = await cache.alookup("something else entirely", model="m")
+        return hit, miss
+
+    hit, miss = asyncio.run(run())
+    assert hit.response == "answer" and miss is None
