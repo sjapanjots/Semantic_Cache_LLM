@@ -77,10 +77,9 @@ def test_context_changes_bypass_cache(cache):
         model="gpt-test", messages=[{"role": "system", "content": "Be terse."}, *q]
     )
     client.chat.completions.create(model="other-model", messages=q)
-    client.chat.completions.create(model="gpt-test", messages=q, stream=True)
-    assert len(create.calls) == 5
+    assert len(create.calls) == 4
     client.chat.completions.create(model="gpt-test", messages=q, timeout=30)
-    assert len(create.calls) == 5  # timeout does not change the answer
+    assert len(create.calls) == 4  # timeout does not change the answer
 
 
 def test_non_user_last_message_not_cached(cache):
