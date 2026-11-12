@@ -28,6 +28,7 @@ dependencies = ["numpy>=1.22"]
 local = ["sentence-transformers>=2.2"]
 openai = ["openai>=1.0"]
 redis = ["redis>=5"]
+hnsw = ["hnswlib>=0.8"]
 prometheus = ["prometheus-client>=0.17"]
 otel = ["opentelemetry-api>=1.20"]
 dev = [
@@ -36,6 +37,10 @@ dev = [
     "fakeredis>=2.20",
     "prometheus-client>=0.17",
     "opentelemetry-sdk>=1.20",
+    "hnswlib>=0.8",
+    # SDK types used by the streaming and verifier tests
+    "anthropic>=0.40",
+    "openai>=1.0",
 ]
 
 [project.urls]

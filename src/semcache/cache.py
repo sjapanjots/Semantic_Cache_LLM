@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, TypeVar
 
 from .embedders import Embedder, HashingEmbedder, exact_key
+from .index import IndexSpec
 from .pricing import PriceBook
 from .sqlite_store import SQLiteStore
 from .stats import CacheStats, StatsTracker
@@ -65,6 +66,8 @@ class SemanticCache:
         embedder: turns prompts into vectors. Defaults to :class:`HashingEmbedder`.
         store: where entries live. Defaults to :class:`InMemoryStore`.
         path: shorthand for ``store=SQLiteStore(path)``, to persist the cache to a file.
+        index: vector index for the store this cache creates: ``"exact"`` (default),
+            ``"hnsw"`` for large caches, or a ``factory(dim)``. See :mod:`semcache.index`.
         threshold: minimum cosine similarity (0..1) for a semantic hit. Higher is stricter.
             Defaults to the embedder's ``recommended_threshold`` (0.85 if it has none).
         namespace: default namespace; entries in different namespaces never match.
@@ -86,6 +89,7 @@ class SemanticCache:
         store: BaseStore | None = None,
         *,
         path: str | Path | None = None,
+        index: IndexSpec = None,
         threshold: float | None = None,
         namespace: str = "default",
         pricing: PriceBook | Mapping[str, Any] | None = None,
@@ -96,6 +100,8 @@ class SemanticCache:
     ) -> None:
         if store is not None and path is not None:
             raise ValueError("pass either store or path, not both")
+        if store is not None and index is not None:
+            raise ValueError("pass index to the store you create, not to SemanticCache")
         if ttl is not None and ttl <= 0:
             raise ValueError("ttl must be positive")
         if max_entries is not None and max_entries < 1:
@@ -106,7 +112,9 @@ class SemanticCache:
         if not 0.0 < threshold <= 1.0:
             raise ValueError("threshold must be in (0, 1]")
         if store is None:
-            store = SQLiteStore(path) if path is not None else InMemoryStore()
+            store = (
+                SQLiteStore(path, index=index) if path is not None else InMemoryStore(index=index)
+            )
         self.store: BaseStore = store
         self.store.bind_embedder(self.embedder.name)
         self.threshold = threshold

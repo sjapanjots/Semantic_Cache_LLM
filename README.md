@@ -41,6 +41,7 @@ pip install semcacher                       # core (numpy only)
 pip install "semcacher[local]"              # + sentence-transformers, runs locally
 pip install "semcacher[openai]"             # + OpenAI embeddings
 pip install "semcacher[redis]"              # + shared cache in Redis
+pip install "semcacher[hnsw]"               # + fast search for very large caches
 pip install "semcacher[prometheus]"         # + Prometheus metrics
 pip install "semcacher[otel]"               # + OpenTelemetry metrics
 ```
@@ -334,6 +335,29 @@ cache = SemanticCache(store=RedisStore("redis://localhost:6379/0"))
   the list of entry ids per lookup. That is fast up to tens of thousands of
   entries per namespace.
 
+### Very large caches (HNSW index)
+
+By default every lookup compares the question with every saved entry: exact, and fast
+up to tens of thousands of entries per namespace. For more, use an HNSW index:
+
+```python
+cache = SemanticCache(path="cache.db", index="hnsw")        # or InMemoryStore(index="hnsw")
+```
+
+Measured on 100,000 entries (128-dim vectors, 4 CPU cores):
+
+| | per lookup | finds the closest entry |
+|---|---|---|
+| exact (default) | 1.35 ms | always |
+| `index="hnsw"` | 0.30 ms | 99.7% |
+
+HNSW is approximate, but a missed neighbour can only cost a cache miss, never a wrong
+answer: whatever it returns must still pass the similarity threshold. Tune it with
+`index=lambda dim: HNSWIndex(dim, M=32, ef_search=256)`, or plug in any index with
+`add` / `remove` / `search` (see `semcache.index`). A SQLite cache rebuilds its index
+when it opens, in bulk (100,000 entries in about 12 s). `RedisStore` always searches
+exactly.
+
 ## CLI
 
 ```bash
@@ -382,7 +406,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and [CHANGELOG.md](CHANGELOG.md).
 
 ## Roadmap
 
-- Pluggable vector indexes (FAISS, hnswlib) for millions of entries
 - Postgres/pgvector store
 - OpenAI Responses API in `wrap_openai`
 
