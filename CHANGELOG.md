@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-18
+
 ### Added
 - OpenAI Responses API: `wrap_openai` now also caches `client.responses.create`, sync
   and async (`semcache.responses`). The `input` text or last user message is matched by
