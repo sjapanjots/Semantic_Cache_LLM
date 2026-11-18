@@ -36,6 +36,7 @@ from collections.abc import Callable
 from types import SimpleNamespace
 from typing import Any
 
+from . import responses
 from .cache import SemanticCache
 from .streaming import (
     ANTHROPIC,
@@ -53,6 +54,7 @@ __all__ = ["wrap_openai", "wrap_anthropic"]
 _IGNORED_PARAMS = frozenset(
     {
         "messages",
+        "input",
         "model",
         "stream",
         "stream_options",
@@ -64,6 +66,8 @@ _IGNORED_PARAMS = frozenset(
         "metadata",
         "store",
         "service_tier",
+        "prompt_cache_key",
+        "safety_identifier",
     }  # fmt: skip
 )
 
@@ -124,6 +128,21 @@ def _openai_complete(response: Any) -> bool:
     return not any(_field(c, "finish_reason") in {"length", "content_filter"} for c in choices)
 
 
+def _parse_chat(kwargs: dict[str, Any]) -> tuple[str, list[Any], list[Any]] | None:
+    """``(prompt, history, attachments)`` for chat-style ``messages`` requests."""
+    messages = list(kwargs.get("messages") or [])
+    if not messages or _field(messages[-1], "role") != "user":
+        return None
+    content = _field(messages[-1], "content")
+    prompt = _text_of(content)
+    if not prompt:
+        return None
+    attachments = []
+    if isinstance(content, list):
+        attachments = [_to_jsonable(p) for p in content if _field(p, "type") != "text"]
+    return prompt, [_to_jsonable(m) for m in messages[:-1]], attachments
+
+
 class _ChatCacher:
     def __init__(
         self,
@@ -132,31 +151,28 @@ class _ChatCacher:
         usage_fields: tuple[str, str],
         rebuild: Callable[[Any], Any],
         is_complete: Callable[[Any], bool],
-        stream_format: StreamFormat,
+        stream_format: StreamFormat | None,
+        parse: Callable[[dict[str, Any]], tuple[str, list[Any], list[Any]] | None] | None = None,
     ) -> None:
         self.cache = cache
         self.namespace = namespace
         self.usage_fields = usage_fields
         self.rebuild = rebuild
         self.is_complete = is_complete
-        self.stream_format = stream_format
+        self.stream_format = stream_format  # None: stream=True passes through uncached
+        self.parse = parse or _parse_chat
 
     def key(self, kwargs: dict[str, Any]) -> tuple[str, str] | None:
         """Return ``(prompt, namespace)`` or ``None`` if this request should not be cached."""
-        messages = list(kwargs.get("messages") or [])
-        if not messages or _field(messages[-1], "role") != "user":
+        parsed = self.parse(kwargs)
+        if parsed is None:
             return None
-        content = _field(messages[-1], "content")
-        prompt = _text_of(content)
-        if not prompt:
-            return None
+        prompt, history, attachments = parsed
         context = {k: v for k, v in kwargs.items() if k not in _IGNORED_PARAMS}
-        context["history"] = [_to_jsonable(m) for m in messages[:-1]]
-        if isinstance(content, list):
+        context["history"] = history
+        if attachments:
             # Images, documents and other non-text parts must match exactly too.
-            attachments = [_to_jsonable(p) for p in content if _field(p, "type") != "text"]
-            if attachments:
-                context["attachments"] = attachments
+            context["attachments"] = attachments
         digest = hashlib.sha256(
             json.dumps(context, sort_keys=True, default=str).encode("utf-8")
         ).hexdigest()[:16]
@@ -198,6 +214,8 @@ def _cached_create(create: Callable[..., Any], cacher: _ChatCacher) -> Callable[
     if inspect.iscoroutinefunction(create):
 
         async def acreate(**kwargs: Any) -> Any:
+            if kwargs.get("stream") and cacher.stream_format is None:
+                return await create(**kwargs)
             if kwargs.get("stream"):
                 data, key = await asyncio.to_thread(cacher.lookup_data, kwargs)
                 if data is not None:
@@ -222,6 +240,8 @@ def _cached_create(create: Callable[..., Any], cacher: _ChatCacher) -> Callable[
         return acreate
 
     def create_(**kwargs: Any) -> Any:
+        if kwargs.get("stream") and cacher.stream_format is None:
+            return create(**kwargs)
         if kwargs.get("stream"):
             data, key = cacher.lookup_data(kwargs)
             if data is not None:
@@ -257,7 +277,11 @@ class _Proxy:
 
 
 def wrap_openai(client: Any, cache: SemanticCache, *, namespace: str = "openai") -> Any:
-    """Cache ``client.chat.completions.create`` for an ``OpenAI`` or ``AsyncOpenAI`` client."""
+    """Cache an ``OpenAI`` or ``AsyncOpenAI`` client.
+
+    Covers ``client.chat.completions.create`` and, when the client has it, the Responses
+    API ``client.responses.create`` (see :mod:`semcache.responses`).
+    """
     cacher = _ChatCacher(
         cache,
         namespace,
@@ -268,7 +292,21 @@ def wrap_openai(client: Any, cache: SemanticCache, *, namespace: str = "openai")
     )
     completions = client.chat.completions
     wrapped = _Proxy(completions, create=_cached_create(completions.create, cacher))
-    return _Proxy(client, chat=_Proxy(client.chat, completions=wrapped), semcache=cache)
+    overrides: dict[str, Any] = {"chat": _Proxy(client.chat, completions=wrapped)}
+    if getattr(client, "responses", None) is not None:
+        responses_cacher = _ChatCacher(
+            cache,
+            f"{namespace}/responses",
+            usage_fields=("input_tokens", "output_tokens"),
+            rebuild=responses.rebuild,
+            is_complete=responses.is_complete,
+            stream_format=None,
+            parse=responses.parse_request,
+        )
+        overrides["responses"] = _Proxy(
+            client.responses, create=_cached_create(client.responses.create, responses_cacher)
+        )
+    return _Proxy(client, semcache=cache, **overrides)
 
 
 def wrap_anthropic(client: Any, cache: SemanticCache, *, namespace: str = "anthropic") -> Any:
