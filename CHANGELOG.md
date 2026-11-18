@@ -6,15 +6,19 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-### Changed
-- **License: Apache License 2.0** (was MIT), with a `NOTICE` file. Anyone sharing a
-  modified version must keep the notices and state which files they changed; the
-  license also includes a patent grant. Versions up to and including 0.1.0 remain
-  available under the MIT License.
-- The project is branded **semcacher**, matching `pip install semcacher`; the import
-  name is still `semcache`.
+## [0.2.0] - 2026-11-18
 
 ### Added
+- `semcache.verifier`: `LLMVerifier` asks a cheap LLM whether a semantic match's saved
+  answer really answers the new question, and turns the hit into a miss if not. Pass it
+  as `SemanticCache(verifier=...)`. Includes `anthropic_judge` (Claude Haiku 5.5 at low
+  effort by default) and `openai_judge`, `verify_below` to skip close matches,
+  remembered decisions, a safe `on_error` default, and `verifier.stats`.
+- `semcache.metrics`: export cache stats to monitoring. `PrometheusCollector` for
+  `prometheus_client` (`[prometheus]` extra), `prometheus_text()` for any web framework
+  with no extra packages, and `register_opentelemetry()` (`[otel]` extra). Covers
+  lookups, exact/semantic hits, misses, tokens and money saved and spent, hit ratio,
+  entries, and per-model breakdowns.
 - Vector indexes (`semcache.index`): `index="hnsw"` on `SemanticCache`,
   `InMemoryStore` or `SQLiteStore` uses an HNSW graph (`pip install "semcacher[hnsw]"`)
   for fast lookups in very large caches: 0.30 ms instead of 1.35 ms at 100,000
@@ -28,12 +32,17 @@ All notable changes to this project are documented here. The format follows
   share entries. Supports text, tool use, thinking and citations (Anthropic) and
   content, refusals and tool calls (OpenAI).
 
-### Fixed
-- Exact search rebuilt its whole matrix after every write, so alternating writes and
-  lookups slowed down with cache size (61 ms per write + lookup at 50,000 entries,
-  now 1.8 ms).
-
-## [0.2.0] - 2026-11-12
+### Changed
+- **License: Apache License 2.0** (was MIT), with a `NOTICE` file. Anyone sharing a
+  modified version must keep the notices and state which files they changed; the
+  license also includes a patent grant. Versions up to and including 0.1.0 remain
+  available under the MIT License.
+- The project is branded **semcacher**, matching `pip install semcacher`; the import
+  name is still `semcache`.
+- **Upgrade note:** the built-in matcher is now named `hashing-v2-...`. A SQLite or
+  Redis cache built with 0.1.0's default matcher is refused with
+  `EmbedderMismatchError` instead of mixing incompatible vectors; clear it once with
+  `semcache clear --db <file>` (or `cache.clear()`).
 
 ### Fixed
 - **Wrong answers from the exact-match path:** prompts that differed only in symbols
@@ -43,8 +52,8 @@ All notable changes to this project are documented here. The format follows
   `?`/`!`/`.` (new `exact_key()`).
 - **Wrong answers from the built-in matcher:** `HashingEmbedder` dropped one-letter
   words and operators and gave numbers little weight, so "read a file in C" and
-  "in R" scored 1.0. It now keeps them and weighs them up; on the bundled sample pairs the default
-  threshold gives no wrong hits and finds more rewordings.
+  "in R" scored 1.0. It now keeps them and weighs them up; on the bundled sample
+  pairs the default threshold gives no wrong hits and finds more rewordings.
 - **Wrong answers from the client wrappers:** images and other non-text parts of the
   last message were ignored, so two different images with the same question shared
   an answer. They are now part of the match.
@@ -57,24 +66,9 @@ All notable changes to this project are documented here. The format follows
   the client wrappers.
 - A full cache (`max_entries`) scanned the whole store on every write; it now evicts
   the least recently used tenth at once.
-
-### Changed
-- **Upgrade note:** the built-in matcher is now named `hashing-v2-...`. A SQLite or
-  Redis cache built with 0.1.0's default matcher is refused with
-  `EmbedderMismatchError` instead of mixing incompatible vectors; clear it once with
-  `semcache clear --db <file>` (or `cache.clear()`).
-
-### Added
-- `semcache.verifier`: `LLMVerifier` asks a cheap LLM whether a semantic match's saved
-  answer really answers the new question, and turns the hit into a miss if not. Pass it
-  as `SemanticCache(verifier=...)`. Includes `anthropic_judge` (Claude Haiku 5.5 at low
-  effort by default) and `openai_judge`, `verify_below` to skip close matches,
-  remembered decisions, a safe `on_error` default, and `verifier.stats`.
-- `semcache.metrics`: export cache stats to monitoring. `PrometheusCollector` for
-  `prometheus_client` (`[prometheus]` extra), `prometheus_text()` for any web framework
-  with no extra packages, and `register_opentelemetry()` (`[otel]` extra). Covers
-  lookups, exact/semantic hits, misses, tokens and money saved and spent, hit ratio,
-  entries, and per-model breakdowns.
+- Exact search rebuilt its whole matrix after every write, so alternating writes and
+  lookups slowed down with cache size (61 ms per write + lookup at 50,000 entries,
+  now 1.8 ms).
 
 ## [0.1.0] - 2026-11-09
 
