@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- **License: Apache License 2.0** (was MIT), with a `NOTICE` file. Anyone sharing a
+  modified version must keep the notices and state which files they changed; the
+  license also includes a patent grant. Versions up to and including 0.1.0 remain
+  available under the MIT License.
+- The project is branded **semcacher**, matching `pip install semcacher`; the import
+  name is still `semcache`.
+
 ### Added
 - Vector indexes (`semcache.index`): `index="hnsw"` on `SemanticCache`,
   `InMemoryStore` or `SQLiteStore` uses an HNSW graph (`pip install "semcacher[hnsw]"`)
