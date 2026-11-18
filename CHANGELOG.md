@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- `PostgresStore` (`semcache.postgres_store`, `pip install "semcacher[postgres]"`): keep
+  the cache in PostgreSQL with the pgvector extension, so every server shares answers
+  and stats and the similarity search runs in the database. Exact search by default;
+  `index="hnsw"` adds a pgvector HNSW index for very large tables, with an exact
+  fallback when the approximate search misses a namespace. Tables are created on the
+  first write; `table=` keeps several caches apart; stats from all servers add up.
+
 ## [0.2.0] - 2026-11-18
 
 ### Added
