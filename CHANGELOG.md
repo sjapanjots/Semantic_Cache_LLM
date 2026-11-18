@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-18
+
 ### Added
 - `PostgresStore` (`semcache.postgres_store`, `pip install "semcacher[postgres]"`): keep
   the cache in PostgreSQL with the pgvector extension, so every server shares answers
