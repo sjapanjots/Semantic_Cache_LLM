@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/sjapanjots/Semantic_Cache_LLM/main/assets/logo.svg" alt="semcache" width="480">
+  <img src="https://raw.githubusercontent.com/sjapanjots/Semantic_Cache_LLM/main/assets/logo.svg" alt="semcacher" width="480">
 </p>
 
 <p align="center">
@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://github.com/sjapanjots/Semantic_Cache_LLM/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/sjapanjots/Semantic_Cache_LLM/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="Python" src="https://img.shields.io/badge/python-3.10%2B-blue">
-  <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
+  <img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue">
 </p>
 
 ---
@@ -20,7 +20,7 @@
 
 Users ask the same things in different words. An exact-match cache misses
 *"How do I reverse a list in Python?"* vs *"python: how to reverse a list"*, so you pay
-for the same answer twice. `semcache` embeds each prompt, finds the closest one already
+for the same answer twice. **semcacher** embeds each prompt, finds the closest one already
 answered, and returns that answer when the two are similar enough. Every hit is counted
 in tokens and dollars, so you can see what the cache is worth.
 
@@ -411,4 +411,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
-[MIT](LICENSE)
+[Apache License 2.0](LICENSE). See [NOTICE](NOTICE): if you share a modified version,
+keep the notices and mark the files you changed. Versions up to and including 0.1.0
+were released under the MIT License.
