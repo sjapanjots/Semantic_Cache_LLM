@@ -109,7 +109,12 @@ client.messages.create(
 )
 ```
 
-`wrap_openai(OpenAI(), cache)` does the same for `client.chat.completions.create`.
+`wrap_openai(OpenAI(), cache)` does the same for `client.chat.completions.create`
+**and** for the Responses API, `client.responses.create(model=..., input=...)`: the
+`input` text (or the last user message) is matched by meaning, while `instructions`,
+earlier input items, images and files, `previous_response_id` and `conversation` must be
+identical. Only completed responses are stored; background, incomplete and failed ones
+are not. (Responses with `stream=True` aren't cached yet.)
 Async clients (`AsyncAnthropic`, `AsyncOpenAI`) work too. On a hit you get back the
 SDK's normal response object, rebuilt from the cache.
 
@@ -427,7 +432,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and [CHANGELOG.md](CHANGELOG.md).
 
 ## Roadmap
 
-- OpenAI Responses API in `wrap_openai`
+- Streaming for the OpenAI Responses API
 
 ## License
 
