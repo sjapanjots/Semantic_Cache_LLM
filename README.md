@@ -42,6 +42,7 @@ pip install "semcacher[local]"              # + sentence-transformers, runs loca
 pip install "semcacher[openai]"             # + OpenAI embeddings
 pip install "semcacher[redis]"              # + shared cache in Redis
 pip install "semcacher[hnsw]"               # + fast search for very large caches
+pip install "semcacher[postgres]"           # + cache in PostgreSQL (pgvector)
 pip install "semcacher[prometheus]"         # + Prometheus metrics
 pip install "semcacher[otel]"               # + OpenTelemetry metrics
 ```
@@ -335,6 +336,26 @@ cache = SemanticCache(store=RedisStore("redis://localhost:6379/0"))
   the list of entry ids per lookup. That is fast up to tens of thousands of
   entries per namespace.
 
+### Keeping the cache in PostgreSQL (pgvector)
+
+If you already run Postgres, keep the cache there: every server shares the same
+answers and stats, and the similarity search runs in the database.
+
+```python
+from semcache import SemanticCache
+from semcache.postgres_store import PostgresStore
+
+cache = SemanticCache(store=PostgresStore("postgresql://user:pass@db:5432/app"))
+```
+
+- Needs the [pgvector](https://github.com/pgvector/pgvector) extension; the store runs
+  `CREATE EXTENSION IF NOT EXISTS vector` (or create it once yourself).
+- Creates `semcache_entries` (plus `_meta` and `_stats` tables) on the first write;
+  `table="team_a_cache"` keeps several caches apart in one database.
+- `index="hnsw"` adds a pgvector HNSW index for very large tables. Search stays exact by
+  default, and a namespace the approximate search misses is searched exactly.
+- Stats from all servers add up, as with Redis.
+
 ### Very large caches (HNSW index)
 
 By default every lookup compares the question with every saved entry: exact, and fast
@@ -406,7 +427,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and [CHANGELOG.md](CHANGELOG.md).
 
 ## Roadmap
 
-- Postgres/pgvector store
 - OpenAI Responses API in `wrap_openai`
 
 ## License

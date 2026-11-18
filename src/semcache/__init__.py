@@ -9,6 +9,7 @@ from .embedders import (
     SentenceTransformerEmbedder,
 )
 from .index import ExactIndex, HNSWIndex, VectorIndex
+from .postgres_store import PostgresStore
 from .pricing import DEFAULT_PRICES, ModelPrice, PriceBook
 from .redis_store import RedisStore
 from .sqlite_store import EmbedderMismatchError, SQLiteStore
@@ -35,6 +36,7 @@ __all__ = [
     "HNSWIndex",
     "SQLiteStore",
     "RedisStore",
+    "PostgresStore",
     "EmbedderMismatchError",
     "Embedder",
     "HashingEmbedder",
