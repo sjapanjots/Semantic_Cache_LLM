@@ -173,16 +173,6 @@ def test_unfinished_answers_are_not_cached(cache, extra):
     assert len(fake.calls) == 2 and len(cache) == 0
 
 
-def test_streaming_passes_through_for_now(cache):
-    client, fake = client_for(cache)
-    for _ in range(2):
-        assert list(client.responses.create(model="gpt-test", input=Q, stream=True)) == [
-            "event-1",
-            "event-2",
-        ]
-    assert len(fake.calls) == 2 and len(cache) == 0
-
-
 def test_responses_and_chat_are_cached_separately_and_cleared_together(cache):
     client, fake = client_for(cache)
     client.responses.create(model="gpt-test", input=Q)

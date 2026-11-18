@@ -12,7 +12,12 @@ All notable changes to this project are documented here. The format follows
   meaning; `instructions`, earlier input items, images and files, `tools`,
   `previous_response_id` and `conversation` must match exactly. Only `completed`
   responses are stored. Responses are cached separately from chat completions, under
-  `<namespace>/responses`. Streaming responses pass through uncached for now.
+  `<namespace>/responses`.
+- Streaming for the Responses API: `responses.create(stream=True)` is cached, sync and
+  async. A miss passes the stream through unchanged and stores the finished response
+  from the final `response.completed` event (incomplete, failed and error streams are
+  not stored); a hit replays it as the SDK's own stream events. Streamed and
+  non-streamed requests share entries.
 
 ## [0.3.0] - 2026-11-18
 

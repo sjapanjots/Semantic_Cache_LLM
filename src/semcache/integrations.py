@@ -300,7 +300,7 @@ def wrap_openai(client: Any, cache: SemanticCache, *, namespace: str = "openai")
             usage_fields=("input_tokens", "output_tokens"),
             rebuild=responses.rebuild,
             is_complete=responses.is_complete,
-            stream_format=None,
+            stream_format=responses.STREAM_FORMAT,
             parse=responses.parse_request,
         )
         overrides["responses"] = _Proxy(

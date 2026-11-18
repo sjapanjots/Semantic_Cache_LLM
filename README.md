@@ -114,7 +114,8 @@ client.messages.create(
 `input` text (or the last user message) is matched by meaning, while `instructions`,
 earlier input items, images and files, `previous_response_id` and `conversation` must be
 identical. Only completed responses are stored; background, incomplete and failed ones
-are not. (Responses with `stream=True` aren't cached yet.)
+are not. `stream=True` works too: a miss streams live and the finished response is
+saved; a hit is replayed as the SDK's own Responses stream events.
 Async clients (`AsyncAnthropic`, `AsyncOpenAI`) work too. On a hit you get back the
 SDK's normal response object, rebuilt from the cache.
 
@@ -432,7 +433,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and [CHANGELOG.md](CHANGELOG.md).
 
 ## Roadmap
 
-- Streaming for the OpenAI Responses API
+Everything planned so far has shipped. Ideas and requests are welcome: open an issue at
+<https://github.com/sjapanjots/Semantic_Cache_LLM/issues>.
 
 ## License
 
