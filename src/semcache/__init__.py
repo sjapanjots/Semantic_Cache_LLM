@@ -17,7 +17,7 @@ from .stats import CacheStats, ModelStats
 from .store import BaseStore, CacheEntry, InMemoryStore
 from .tuning import CalibrationResult, LabeledPair, calibrate, load_pairs
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 __all__ = [
     "SemanticCache",
